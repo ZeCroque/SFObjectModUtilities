@@ -1,13 +1,19 @@
-#include "Hooks.h"
-#include "Settings.h"
-
-// SFSE message listener, use this to do stuff at specific moments during runtime
-void Listener(SFSE::MessagingInterface::Message* message) noexcept
+static RE::BGSKeyword* GetAttachPoint(RE::BSScript::IVirtualMachine&, std::uint32_t, std::monostate, RE::BGSMod::Attachment::Mod* inObjectMod)
 {
-    if (message->type == SFSE::MessagingInterface::kPostDataLoad) {
-        Settings::LoadSettings();
-        Hooks::Install();
+    return inObjectMod->attachPoint;
+}
+
+void RegisterPapyrusScripts(RE::BSScript::IVirtualMachine** vm)
+{
+    logger::info("registering functions...");
+    if (!vm || !*vm) 
+    {
+        logger::error("vm is nullptr");
+        std::exit(0);
     }
+
+    (*vm)->BindNativeMethod(Plugin::Name, "GetAttachPoint", &GetAttachPoint, true, false);
+    logger::info("functions registered!");
 }
 
 // Main SFSE plugin entry point, initialize everything here
@@ -17,12 +23,9 @@ SFSEPluginLoad(const SFSE::LoadInterface* sfse)
 
     logger::info("{} {} is loading...", Plugin::Name, Plugin::Version.string());
 
-    if (const auto messaging{ SFSE::GetMessagingInterface() }; !messaging->RegisterListener(Listener)) {
-        return false;
-    }
+    SFSE::SetPapyrusCallback(&RegisterPapyrusScripts, true);
 
     logger::info("{} has finished loading.", Plugin::Name);
-    logger::info("");
 
     return true;
 }
